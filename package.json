@@ -1,0 +1,27 @@
+{
+  "name": "flckrdl",
+  "version": "1.0.0",
+  "description": "A simple command to download all Flickr original files from an account.",
+  "main": "index.js",
+  "dependencies": {
+    "dotenv": "^6.1.0",
+    "flickrapi": "^0.6.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markisatacomputer/flickrDL.git"
+  },
+  "keywords": [
+    "Flickr"
+  ],
+  "author": "markisatacomputer",
+  "license": "GPL-2.0-or-later",
+  "bugs": {
+    "url": "https://github.com/markisatacomputer/flickrDL/issues"
+  },
+  "homepage": "https://github.com/markisatacomputer/flickrDL#readme"
+}
