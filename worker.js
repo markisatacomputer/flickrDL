@@ -1,7 +1,13 @@
-class AssetWorker {
+'use strict';
+
+const Oauth = require("./oauth1.js")
+
+require('dotenv').config()
+
+module.exports = class AssetWorker {
 
   constructor() {
-    this.flickr
+    this.flickr = new Oauth()
     this.processing = false
     this.assets = []
     this.processed = []
@@ -15,27 +21,28 @@ class AssetWorker {
     this.cycleAssetQuery()
   }
 
-  getAssets() {
+  async getAssets() {
     //  Call Flickr API
-    this.flickr.people.getPhotos({
-      api_key: process.env.FLICKR_API_KEY,
+    var res = await this.flickr.request('https://api.flickr.com/services/rest/',
+    {
+      api_key: process.env.SERVICE_API_KEY,
+      method: 'flickr.people.getPhotos',
+      format: 'json',
+      nojsoncallback: 1,
       user_id: 'me',
-      authenticated: true,
       page: this.page,
       per_page: 100,
       extras: 'url_o'
-    }, (err, result) => {
-      //  Store results
-      if (err) console.log(err)
-      if (result.photos.photo) {
-        if (this.pages == 0) this.pages = result.photos.pages
-        if (this.total == 0) this.total = Number(result.photos.total)
-        this.addAssets(result.photos.photo)
-      //  Retry - TODO limit this
-      } else {
-        this.getAssets()
-      }
     })
+
+    if (typeof(res.photos.photo) !== 'undefined') {
+      if (this.pages == 0) this.pages = res.photos.pages
+      if (this.total == 0) this.total = Number(res.photos.total)
+      this.addAssets(res.photos.photo)
+    //  Retry - TODO limit this
+    } else {
+      this.getAssets()
+    }
   }
 
   cycleAssetQuery() {
@@ -66,11 +73,10 @@ class AssetWorker {
     console.log(this.processing.url_o)
   }
 
-  init(flickr) {
-    this.flickr = flickr
+  init() {
     this.page = 1
     this.getAssets()
   }
 }
 
-module.exports = new AssetWorker()
+//module.exports = new AssetWorker()

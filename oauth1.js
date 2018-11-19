@@ -134,26 +134,31 @@ module.exports = class Oauth1Client {
   }
 
   async _saveAccessVars() {
-    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN='"+this.AccessToken+"'")
-    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN_SECRET='"+this.AccessTokenSecret+"'")
-    if (this.UserId) await fs.appendFile('.env', "SERVICE_USER_ID='"+this.UserId+"'")
-    if (this.UserName) await fs.appendFile('.env', "SERVICE_USER_NAME='"+this.UserName+"'")
+    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN='"+this.AccessToken+"'\n")
+    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN_SECRET='"+this.AccessTokenSecret+"'\n")
+    if (this.UserId) await fs.appendFile('.env', "SERVICE_USER_ID='"+this.UserId+"'\n")
+    if (this.UserName) await fs.appendFile('.env', "SERVICE_USER_NAME='"+this.UserName+"'\n")
   }
 
   async _sendRequest(req, qVars) {
-    //  Add extra vars
-    if (typeof(qVars) == 'object') {
-      req.qs = Object.assign(req.qs, qVars)
-    }
+    try {
+      //  Add extra vars
+      if (typeof(qVars) == 'object') {
+        req.qs = Object.assign(req.qs, qVars)
+      }
 
-    //  Send request
-    var {res, body} = await request(req)
+      //  Send request
+      var {res, body} = await request(req)
 
-    //  Return parsed response
-    if (typeof(body) == 'string') {
-      return this._parseBody(body)
+      //  Return parsed response
+      if (typeof(body) == 'string') {
+        body = this._parseBody(body)
+      }
+      return body
+
+    } catch (err) {
+      console.error(err)
     }
-    return body
   }
 
   _parseBody(body) {
