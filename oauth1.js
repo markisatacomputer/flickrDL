@@ -140,7 +140,7 @@ module.exports = class Oauth1Client {
     if (this.UserName) await fs.appendFile('.env', "SERVICE_USER_NAME='"+this.UserName+"'\n")
   }
 
-  async _sendRequest(req, qVars) {
+  async _sendRequest(req, qVars, n=0) {
     try {
       //  Add extra vars
       if (typeof(qVars) == 'object') {
@@ -157,7 +157,11 @@ module.exports = class Oauth1Client {
       return body
 
     } catch (err) {
-      console.error(err)
+      console.error(err.message)
+      //  Retry
+      if (n < 4) {
+        this._sendRequest(req, qVars, n+1)
+      }
     }
   }
 
