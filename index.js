@@ -1,4 +1,4 @@
-const Flickr = require("./worker.js")
+const Flickr = require("./flickr.js")
 
 var flickr = new Flickr()
-flickr.getAssets()
+flickr.init()
