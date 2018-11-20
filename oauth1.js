@@ -17,25 +17,25 @@ module.exports = class Oauth1Client {
     this.server = {}
     this.oauth_verifier
     //  Imported configuration variables
-    this.callbackProtocol = process.env.CALLBACK_PROTOCOL ? process.env.CALLBACK_PROTOCOL : 'http://'
-    this.callbackHost = process.env.CALLBACK_HOST ? process.env.CALLBACK_HOST : 'localhost'
-    this.callbackPort = process.env.CALLBACK_PORT ? process.env.CALLBACK_PORT : 3333
-    this.callbackPath = process.env.CALLBACK_PATH ? process.env.CALLBACK_PATH : 'oauth_callback'
+    this.callbackProtocol = process.env.OAUTH_CALLBACK_PROTOCOL ? process.env.OAUTH_CALLBACK_PROTOCOL : 'http://'
+    this.callbackHost = process.env.OAUTH_CALLBACK_HOST ? process.env.OAUTH_CALLBACK_HOST : 'localhost'
+    this.callbackPort = process.env.OAUTH_CALLBACK_PORT ? process.env.OAUTH_CALLBACK_PORT : 3333
+    this.callbackPath = process.env.OAUTH_CALLBACK_PATH ? process.env.OAUTH_CALLBACK_PATH : 'oauth_callback'
     this.callbackURL = this.callbackProtocol + this.callbackHost + ':' + this.callbackPort + '/' + this.callbackPath
-    this.requestTokenURL = process.env.REQUEST_TOKEN_URL
-    this.requestAuthURL = process.env.REQUEST_AUTH_URL
-    this.accessTokenURL = process.env.ACCESS_TOKEN_URL
-    this.requestTokenVars = (typeof(process.env.REQUEST_TOKEN_VARS) == 'string') ? JSON.parse(process.env.REQUEST_TOKEN_VARS) : undefined
-    this.requestAuthVars = (typeof(process.env.REQUEST_AUTH_VARS) == 'string') ? JSON.parse(process.env.REQUEST_AUTH_VARS) : undefined
-    this.accessTokenVars = (typeof(process.env.ACCESS_TOKEN_VARS) == 'string') ? JSON.parse(process.env.ACCESS_TOKEN_VARS) : undefined
-    this.accessResponseMap = (typeof(process.env.ACCESS_RESPONSE_MAP) == 'string') ? JSON.parse(process.env.ACCESS_RESPONSE_MAP) : undefined
+    this.requestTokenURL = process.env.OAUTH_REQUEST_TOKEN_URL
+    this.requestAuthURL = process.env.OAUTH_REQUEST_AUTH_URL
+    this.accessTokenURL = process.env.OAUTH_ACCESS_TOKEN_URL
+    this.requestTokenVars = (typeof(process.env.OAUTH_REQUEST_TOKEN_VARS) == 'string') ? JSON.parse(process.env.OAUTH_REQUEST_TOKEN_VARS) : undefined
+    this.requestAuthVars = (typeof(process.env.OAUTH_REQUEST_AUTH_VARS) == 'string') ? JSON.parse(process.env.OAUTH_REQUEST_AUTH_VARS) : undefined
+    this.accessTokenVars = (typeof(process.env.OAUTH_ACCESS_TOKEN_VARS) == 'string') ? JSON.parse(process.env.OAUTH_ACCESS_TOKEN_VARS) : undefined
+    this.accessResponseMap = (typeof(process.env.OAUTH_ACCESS_RESPONSE_MAP) == 'string') ? JSON.parse(process.env.OAUTH_ACCESS_RESPONSE_MAP) : undefined
     //  Saved configuration variables
-    this.APIKey = process.env.SERVICE_API_KEY
-    this.Secret = process.env.SERVICE_SECRET
-    this.UserId = process.env.SERVICE_USER_ID
-    this.UserName = process.env.SERVICE_USER_NAME
-    this.AccessToken = process.env.SERVICE_ACCESS_TOKEN
-    this.AccessTokenSecret = process.env.SERVICE_ACCESS_TOKEN_SECRET
+    this.APIKey = process.env.OAUTH_SERVICE_API_KEY
+    this.Secret = process.env.OAUTH_SERVICE_SECRET
+    this.UserId = process.env.OAUTH_SERVICE_USER_ID
+    this.UserName = process.env.OAUTH_SERVICE_USER_NAME
+    this.AccessToken = process.env.OAUTH_SERVICE_ACCESS_TOKEN
+    this.AccessTokenSecret = process.env.OAUTH_SERVICE_ACCESS_TOKEN_SECRET
   }
 
   async request(url, query) {
