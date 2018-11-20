@@ -6,6 +6,7 @@
   "dependencies": {
     "dotenv": "^6.1.0",
     "opn": "^5.4.0",
+    "progress": "^2.0.1",
     "request-compose": "^1.0.0",
     "request-oauth": "0.0.3"
   },
