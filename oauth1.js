@@ -157,11 +157,12 @@ module.exports = class Oauth1Client {
       return body
 
     } catch (err) {
-      console.error(err.message)
       //  Retry
       if (n < 4) {
         this._sendRequest(req, qVars, n+1)
       }
+      //  Console
+      console.error(err)
     }
   }
 
