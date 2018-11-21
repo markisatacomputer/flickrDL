@@ -70,6 +70,8 @@ module.exports = class Oauth1Client {
       res = await this._getAccessToken()
       this.AccessToken = res.oauth_token
       this.AccessTokenSecret = res.oauth_token_secret
+      this.UserName = res.username
+      this.UserId = res.userid
       this.server.close()
 
       //  Save important values to file
@@ -134,10 +136,10 @@ module.exports = class Oauth1Client {
   }
 
   async _saveAccessVars() {
-    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN='"+this.AccessToken+"'\n")
-    await fs.appendFile('.env', "SERVICE_ACCESS_TOKEN_SECRET='"+this.AccessTokenSecret+"'\n")
-    if (this.UserId) await fs.appendFile('.env', "SERVICE_USER_ID='"+this.UserId+"'\n")
-    if (this.UserName) await fs.appendFile('.env', "SERVICE_USER_NAME='"+this.UserName+"'\n")
+    await fs.appendFile('.env', "OAUTH_SERVICE_ACCESS_TOKEN='"+this.AccessToken+"'\n")
+    await fs.appendFile('.env', "OAUTH_SERVICE_ACCESS_TOKEN_SECRET='"+this.AccessTokenSecret+"'\n")
+    if (this.UserId) await fs.appendFile('.env', "OAUTH_SERVICE_USER_ID='"+this.UserId+"'\n")
+    if (this.UserName) await fs.appendFile('.env', "OAUTH_SERVICE_USER_NAME='"+this.UserName+"'\n")
   }
 
   async _sendRequest(req, qVars, n=0) {
