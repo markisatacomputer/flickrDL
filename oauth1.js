@@ -1,52 +1,31 @@
 'use strict';
 
-var http = require('http')
-var nodeUrl = require('url')
-var fs = require('fs').promises
-var opn = require('opn')
 var compose = require('request-compose')
 compose.Request.oauth = require('request-oauth')
 var request = compose.client
 
-require('dotenv').config()
+var ClientFactory = require('./client')
 
-module.exports = class Oauth1Client {
+module.exports = class Oauth1Client extends ClientFactory {
 
-  constructor() {
-    //  Local variables
-    this.server = {}
-    this.oauth_verifier
-    //  Imported configuration variables
-    this.callbackProtocol = process.env.OAUTH_CALLBACK_PROTOCOL ? process.env.OAUTH_CALLBACK_PROTOCOL : 'http://'
-    this.callbackHost = process.env.OAUTH_CALLBACK_HOST ? process.env.OAUTH_CALLBACK_HOST : 'localhost'
-    this.callbackPort = process.env.OAUTH_CALLBACK_PORT ? process.env.OAUTH_CALLBACK_PORT : 3333
-    this.callbackPath = process.env.OAUTH_CALLBACK_PATH ? process.env.OAUTH_CALLBACK_PATH : 'oauth_callback'
-    this.callbackURL = this.callbackProtocol + this.callbackHost + ':' + this.callbackPort + '/' + this.callbackPath
-    this.requestTokenURL = process.env.OAUTH_REQUEST_TOKEN_URL
-    this.requestAuthURL = process.env.OAUTH_REQUEST_AUTH_URL
-    this.accessTokenURL = process.env.OAUTH_ACCESS_TOKEN_URL
-    this.requestTokenVars = (typeof(process.env.OAUTH_REQUEST_TOKEN_VARS) == 'string') ? JSON.parse(process.env.OAUTH_REQUEST_TOKEN_VARS) : undefined
-    this.requestAuthVars = (typeof(process.env.OAUTH_REQUEST_AUTH_VARS) == 'string') ? JSON.parse(process.env.OAUTH_REQUEST_AUTH_VARS) : undefined
-    this.accessTokenVars = (typeof(process.env.OAUTH_ACCESS_TOKEN_VARS) == 'string') ? JSON.parse(process.env.OAUTH_ACCESS_TOKEN_VARS) : undefined
-    this.accessResponseMap = (typeof(process.env.OAUTH_ACCESS_RESPONSE_MAP) == 'string') ? JSON.parse(process.env.OAUTH_ACCESS_RESPONSE_MAP) : undefined
-    //  Saved configuration variables
-    this.APIKey = process.env.OAUTH_SERVICE_API_KEY
-    this.Secret = process.env.OAUTH_SERVICE_SECRET
-    this.UserId = process.env.OAUTH_SERVICE_USER_ID
-    this.UserName = process.env.OAUTH_SERVICE_USER_NAME
-    this.AccessToken = process.env.OAUTH_SERVICE_ACCESS_TOKEN
-    this.AccessTokenSecret = process.env.OAUTH_SERVICE_ACCESS_TOKEN_SECRET
+  constructor(config) {
+    super(config)
+
+    //  Replace default client with oauth extended
+    this.request = request
+
+    //  Required
+    this._checkRequired(config, ['APIURL', 'APIKey', 'Secret', 'callbackURL', 'requestTokenURL', 'accessTokenURL'])
+
+    //  Optional
+    this.AccessToken = (config.AccessToken) ? config.AccessToken : undefined
+    this.AccessTokenSecret = (config.AccessTokenSecret) ? config.AccessTokenSecret : undefined
   }
 
-  async request(url, query) {
-    //  Authenticate
-    if (!this.AccessToken || !this.AccessTokenSecret) {
-      var auth = await this.authenticate()
-    }
-
+  async query(query) {
     //  Request
     return await this._sendRequest({
-      url: url,
+      url: this.APIURL,
       qs: query,
       oauth: {
         consumer_key: this.APIKey,
@@ -57,12 +36,14 @@ module.exports = class Oauth1Client {
     })
   }
 
+  /*
   async authenticate() {
     try {
       //  Get request token
       var res = await this._getRequestToken()
       this.AccessToken = res.oauth_token
       this.AccessTokenSecret = res.oauth_token_secret
+      this.emit('RequestToken', res)
       //  Request access
       res = await this._requestAccess()
       this.oauth_verifier = res.oauth_verifier
@@ -72,7 +53,6 @@ module.exports = class Oauth1Client {
       this.AccessTokenSecret = res.oauth_token_secret
       this.UserName = res.username
       this.UserId = res.userid
-      this.server.close()
 
       //  Save important values to file
       if (typeof(this.accessResponseMap) == 'object') {
@@ -84,9 +64,11 @@ module.exports = class Oauth1Client {
       console.error(err)
     }
   }
+  */
 
-  async _getRequestToken() {
-    return await this._sendRequest({
+  async getRequestToken() {
+    //  request
+    var res = await this._sendRequest({
       url: this.requestTokenURL,
       qs: { oauth_callback: this.callbackURL },
       oauth: {
@@ -94,9 +76,15 @@ module.exports = class Oauth1Client {
         consumer_secret:  this.Secret
       }
     }, this.requestTokenVars)
+    //  save
+    this.AccessToken = res.oauth_token
+    this.AccessTokenSecret = res.oauth_token_secret
+
+    return res
   }
 
-  _requestAccess() {
+  /*
+  _requestAccessURL() {
     //  Prepare server to  recieve access callback
     var oauthClient = this
     return new Promise( (resolve, reject) => {
@@ -120,12 +108,13 @@ module.exports = class Oauth1Client {
       opn(oauthClient.requestAuthURL+query)
     })
   }
+  */
 
-  async _getAccessToken() {
+  async getAccessToken(oauth_verifier) {
     //  Request access token
-    return await this._sendRequest({
+    var res = await this._sendRequest({
       url: this.accessTokenURL,
-      qs: { oauth_verifier: this.oauth_verifier },
+      qs: { oauth_verifier: oauth_verifier },
       oauth: {
         consumer_key: this.APIKey,
         consumer_secret:  this.Secret,
@@ -133,57 +122,11 @@ module.exports = class Oauth1Client {
         token_secret: this.AccessTokenSecret
       }
     }, this.accessTokenVars)
-  }
+    //  Save
+    this.AccessToken = res.oauth_token
+    this.AccessTokenSecret = res.oauth_token_secret
 
-  async _saveAccessVars() {
-    await fs.appendFile('.env', "OAUTH_SERVICE_ACCESS_TOKEN='"+this.AccessToken+"'\n")
-    await fs.appendFile('.env', "OAUTH_SERVICE_ACCESS_TOKEN_SECRET='"+this.AccessTokenSecret+"'\n")
-    if (this.UserId) await fs.appendFile('.env', "OAUTH_SERVICE_USER_ID='"+this.UserId+"'\n")
-    if (this.UserName) await fs.appendFile('.env', "OAUTH_SERVICE_USER_NAME='"+this.UserName+"'\n")
-  }
-
-  async _sendRequest(req, qVars, n=0) {
-    try {
-      //  Add extra vars
-      if (typeof(qVars) == 'object') {
-        req.qs = Object.assign(req.qs, qVars)
-      }
-
-      //  Send request
-      var {res, body} = await request(req)
-
-      //  Return parsed response
-      if (typeof(body) == 'string') {
-        body = this._parseBody(body)
-      }
-      return body
-
-    } catch (err) {
-      //  Retry
-      if (n < 4) {
-        this._sendRequest(req, qVars, n+1)
-      }
-      //  Console
-      console.error(err)
-    }
-  }
-
-  _parseBody(body) {
-    var vars = {}
-    var oauthRes = body.split('&')
-    oauthRes.forEach((str) => {
-      var v = str.split('=')
-      vars[v[0]] = v[1]
-    })
-
-    return vars
-  }
-
-  _objToQueryString(obj) {
-    //  get query var names/values and map to strings
-    var queryVars = Object.getOwnPropertyNames(obj).map( name => name+'='+obj[name] )
-
-    return '?'+queryVars.join('&')
+    return res
   }
 
 }
