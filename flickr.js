@@ -1,36 +1,52 @@
 'use strict';
 
-const fs = require('fs')
 const Progress = require('progress')
 const Oauth = require("./oauth1.js")
 const importRecord = require('./record.js')
 const EventEmitter = require('events')
 const request = require('request-compose').stream
 
-require('dotenv').config()
-
 module.exports = class Flickr extends EventEmitter {
 
-  constructor() {
-    this.flickr = new Oauth()
-    this.storagePath = process.env.OAUTH_STORAGE_PATH
-    this.logPath = this.storagePath+'/flickr.log'
-    this.records = []
+  constructor(config) {
+    super(config)
+
+    this.flickr = new Oauth({
+      APIURL: 'https://api.flickr.com/services/rest/',
+      APIKey: config.apiKey,//process.env.FLICKR_API_KEY,
+      Secret: config.secret,//process.env.FLICKR_SECRET,
+      AccessToken: (config.accessToken) ? config.accessToken : undefined,
+      AccessTokenSecret: (config.accessTokenSecret) ? config.accessTokenSecret : undefined,
+      callbackURL: config.callbackURL,
+      requestTokenURL: 'https://www.flickr.com/services/oauth/request_token',
+      accessTokenURL: 'https://www.flickr.com/services/oauth/access_token',
+      defaultReq: {
+        qs: {
+          api_key: config.apiKey,
+          format: 'json',
+          nojsoncallback: 1
+        }
+      }
+    })
     this.page = 0
     this.pages = 0
     this.per_page = 100
     this.total = 0
+  }
 
-    //  Create storage dir if nonexistant
-    if (!fs.existsSync(this.storagePath)){
-      fs.mkdirSync(this.storagePath)
-    }
+  async requestAccess() {
+    var res = await this.flickr._getRequestToken()
+    return 'https://www.flickr.com/services/oauth/authorize?perms=read&oauth_token='+res.oauth_token
+  }
+
+  async getAccessToken(oauth_verifier) {
+    return await this.flickr._getAccessToken(oauth_verifier)
   }
 
   async getAllRecords() {
     var flickr = this
     //  Call Flickr API
-    var res = await this._sendRequest({
+    var res = await this.flickr.request({
       method: 'flickr.people.getPhotos',
       user_id: 'me',
       page: this.page,
@@ -43,13 +59,13 @@ module.exports = class Flickr extends EventEmitter {
       if (this.pages == 0) this.pages = res.photos.pages
       if (this.total == 0) this.total = Number(res.photos.total)
       this.res.photos.photo.forEach((photo) => {
-        var record = new importRecord(
+        var record = new importRecord({
           id: photo.id,
-          service: 'Flickr'
+          service: 'Flickr',
           title: photo.title,
           description: photo.description,
           url: photo.url_o
-        )
+        })
         flickr.emit('recordCreate', record)
       })
     }
@@ -66,15 +82,15 @@ module.exports = class Flickr extends EventEmitter {
     //  Skip records that already have meta
     if (fs.existsSync(this.storagePath+'/'+record.id+'.meta.json')) return
 
-    var info = await this._sendRequest({
+    var info = await this.flickr.query({
       method: 'flickr.photos.getInfo',
       photo_id: record.id,
     })
-    var exif = await this._sendRequest({
+    var exif = await this.flickr.query({
       method: 'flickr.photos.getExif',
       photo_id: record.id,
     })
-    var context = await this._sendRequest({
+    var context = await this.flickr.query({
       method: 'flickr.photos.getAllContexts',
       photo_id: record.id,
     })
@@ -90,19 +106,19 @@ module.exports = class Flickr extends EventEmitter {
 
     //  Get info and write
     record = Object.assign(record, info)
-    this._saveRecord(record, 'meta')
 
     return record
   }
 
-  async getRecordImagefile(record) {
-    var flickrFilename = record.url_o.split('/').pop()
-    var storageFilename = this.storagePath+'/'+flickrFilename
-    //  Skip files that already exist in storage
-    if (fs.existsSync(storageFilename)) return
+  /**
+   *   Return pipe of asset original file
+   * @param  {[type]} record [description]
+   * @return {[type]}        [description]
+   */
+  async getRecordFile(record, destination) {
+    var flickrFilename = record.url.split('/').pop()
 
     //  Get file
-    var original = fs.createWriteStream(this.storagePath+'/'+flickrFilename)
     var {res, body} = await request({
       method: 'GET',
       url: this.processing.url_o,
@@ -121,56 +137,11 @@ module.exports = class Flickr extends EventEmitter {
     res.on('data', (chunk) => {
       this.fileProgress.tick(chunk.length)
     })
-    //    - write
-    res.pipe(original)
-
-    //  return path to image file
-    return storageFilename
-  }
-
-  _loadRecords(ext='') {
-    var filepaths = fs.readdirSync(this.assetPath)
-    return filepaths.filter((filePath) => {
-      var match = filepath.search('.'+ext+'.')
-      if (ext.length>0) { return match } else { return !match }
+    res.on('close', (ar) => {
+      return ar
     })
-  }
-
-  _loadRecord(id, ext='') {
-    var storage = this._getRecordPath(id, ext)
-    var record = JSON.parse( fs.readFileSync(storage) )
-  }
-
-  _saveRecord(record, ext='') {
-    var storage = this._getRecordPath(id, ext)
-    fs.writeFileSync(storage, JSON.stringify(record, null, '\t'))
-  }
-
-  _getRecordPath(id, ext='') {
-    var storage = this.storagePath+'/'+record.id
-    if (ext.length > 0) storage += '.'+ext
-    storage += '.json'
-
-    return storage
-  }
-
-  _log(op) {
-    fs.writeFileSync(
-      this.logPath,
-      JSON.stringify({
-        operation: op,
-        date: Date.now(),
-        total: this.assets.length
-      })
-    )
-  }
-
-  async _sendRequest(req) {
-    req.api_key = process.env.OAUTH_SERVICE_API_KEY
-    req.format = 'json'
-    req.nojsoncallback = 1
-
-    return await this.flickr.request('https://api.flickr.com/services/rest/', req)
+    //    - write
+    res.pipe(destination)
   }
 
 }
