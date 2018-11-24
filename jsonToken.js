@@ -38,15 +38,34 @@ module.exports = class JsonTokenClient {
 
   async query(path, query) {
     try {
-      //  Authenticate
-      if (!this.accessToken) {
-        var auth = await this.authenticate()
-      }
-
       //  Request
       return await this._sendRequest({
         url: this.serviceURL + path,
         qs: query
+      })
+    } catch(err) {
+      console.error(err)
+    }
+  }
+
+  async patch(path, query) {
+    try {
+      //  Request
+      return await this._sendRequest({
+        url: this.serviceURL + path,
+        method: 'PATCH'
+      })
+    } catch(err) {
+      console.error(err)
+    }
+  }
+
+  async post(path, query) {
+    try {
+      //  Request
+      return await this._sendRequest({
+        url: this.serviceURL + path,
+        method: 'POST'
       })
     } catch(err) {
       console.error(err)
@@ -74,6 +93,11 @@ module.exports = class JsonTokenClient {
   }
 
   async _sendRequest(req, n=0) {
+    //  Authenticate
+    if (!this.accessToken) {
+      var auth = await this.authenticate()
+    }
+
     try {
       //  Add default request vars
       if (this.req) {
