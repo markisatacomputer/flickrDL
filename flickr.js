@@ -3,11 +3,13 @@
 const fs = require('fs')
 const Progress = require('progress')
 const Oauth = require("./oauth1.js")
+const importRecord = require('./record.js')
+const EventEmitter = require('events')
 const request = require('request-compose').stream
 
 require('dotenv').config()
 
-module.exports = class Flickr {
+module.exports = class Flickr extends EventEmitter {
 
   constructor() {
     this.flickr = new Oauth()
@@ -36,11 +38,19 @@ module.exports = class Flickr {
       extras: 'url_o'
     })
 
+    //  Emit each record imported
     if (typeof(res.photos.photo) !== 'undefined') {
       if (this.pages == 0) this.pages = res.photos.pages
       if (this.total == 0) this.total = Number(res.photos.total)
       this.res.photos.photo.forEach((photo) => {
-        flickr._saveRecord(photo)
+        var record = new importRecord(
+          id: photo.id,
+          service: 'Flickr'
+          title: photo.title,
+          description: photo.description,
+          url: photo.url_o
+        )
+        flickr.emit('recordCreate', record)
       })
     }
 
@@ -49,6 +59,7 @@ module.exports = class Flickr {
       this.page++
       this.getAllRecords()
     }
+
   }
 
   async getRecordMeta(record) {
